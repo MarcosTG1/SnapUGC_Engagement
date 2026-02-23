@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# Model checkpoints
+*.pth
+*.pt
+*.bin
+
+# Video and audio
+*.mp4
+*.avi
+*.wav
+*.mp3
+
+# Dataset
+dataset/test_videos/
+dataset/train_videos/
+dataset/val_videos/
+
+# Outputs
+submission_*.csv
+*.log
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
