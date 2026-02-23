@@ -1,0 +1,33 @@
+# --- Dependencias del proyecto base (mPLUG_2) ---
+transformers==4.14.1
+timm==0.4.9
+decord
+ftfy
+oss2
+more_itertools
+colorlog
+
+# --- Dependencias de test_SnapUGC_baseline.py ---
+
+# Deep Learning
+torch
+torchvision
+
+# TensorFlow y TensorFlow Hub (para YAMNet - clasificación de audio)
+tensorflow
+tensorflow-hub
+
+# Stable Diffusion (para EVQA)
+diffusers
+accelerate   # requerido por diffusers
+
+# Procesamiento de datos y utilidades
+numpy
+scipy
+opencv-python       # cv2
+imageio             # usado en video_patch_image_dataset.py
+ruamel.yaml         # para cargar configs YAML
+
+# Visualización y notebooks
+matplotlib
+ipython             # IPython.display.Audio
