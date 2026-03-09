@@ -211,7 +211,7 @@ def feat4_func(model):
 def captioning(path):
     if True:
         # path = video_name[0]
-        array_ = read_data(path, num_frame=32)
+        array_ = read_data(path, num_frame=16) # Reduced from 32 to 16 to save huge VRAM on attention maps
         array_2 = read_data2(path).unsqueeze(0)
         if True:
             videos = array_2
