@@ -5,10 +5,8 @@ import torchvision
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import tensorflow as tf
+tf.config.set_visible_devices([], 'GPU') # Force TF to run YamNet on CPU!
 import argparse
-gpus = tf.config.experimental.list_physical_devices('GPU')
-for gpu in gpus:
-    tf.config.experimental.set_memory_growth(gpu, True)
 import tensorflow_hub as hub
 import numpy as np
 from modules.distort import Distortion 
@@ -80,6 +78,8 @@ pos_embed = resize_pos_embed(state_dict['visual_encoder.visual.positional_embedd
                                                    pos_embed.unsqueeze(0))
 state_dict['visual_encoder.visual.positional_embedding'] = pos_embed
 captioning_model.load_state_dict(state_dict, strict=False)
+captioning_model.eval()
+captioning_model = captioning_model.half() # Shrink model weights to 16-bit (Saves ~2GB VRAM)
 
 model_music = hub.load('https://tfhub.dev/google/yamnet/1')
 def class_names_from_csv(class_map_csv_text):
@@ -219,7 +219,7 @@ def captioning(path):
             n_seq = 16
             n_seq_multiple = n // n_seq
             n_seq_residual = n % n_seq
-            videos = videos.to(device)
+            videos = videos.to(device, dtype=torch.float16)
 
             if n_seq_residual > 3:
                 videos = torch.cat((videos[:,:,0:n_seq_multiple*n_seq], videos[:,:,-n_seq:]), dim=2)
@@ -237,16 +237,16 @@ def captioning(path):
                 for kkk in range(video_new_len // n_seq // bs):
                     video = videos[kkk*bs:(kkk+1)*bs,:].permute(0,2,1,3,4)
                     image_embeds = captioning_model.forward_feature(video, train=False)
-                    image_embeds_list.append(image_embeds)
+                    image_embeds_list.append(image_embeds.cpu()) # Offload to CPU
                     torch.cuda.empty_cache()
                 if (kkk+1)* bs < video_new_len // n_seq:
                     video = videos[(kkk+1)*bs:,:].permute(0,2,1,3,4)
                     image_embeds = captioning_model.forward_feature(video, train=False)
-                    image_embeds_list.append(image_embeds)
+                    image_embeds_list.append(image_embeds.cpu()) # Offload to CPU
                     torch.cuda.empty_cache()
             image_embeds_all = torch.cat(image_embeds_list, dim=0)
             image_embeds_all = torch.mean(image_embeds_all, dim=1)
-        array_ = array_.to(device,non_blocking=True).unsqueeze(0)
+        array_ = array_.to(device, non_blocking=True, dtype=torch.float16).unsqueeze(0)
         with torch.cuda.amp.autocast():
             topk_ids, topk_probs = captioning_model(array_, train=False)
         for topk_id, topk_prob in zip(topk_ids, topk_probs):
