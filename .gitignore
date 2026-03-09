@@ -30,3 +30,5 @@ submission_*.csv
 
 # OS
 .DS_Store
+
+checkpoints/
