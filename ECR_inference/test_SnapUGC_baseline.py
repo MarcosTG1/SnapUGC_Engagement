@@ -107,7 +107,7 @@ model2.eval()
 model1 = EfficientNetV2('s',
                         in_channels=3,
                         n_classes=50,
-                        pretrained=True)
+                        pretrained=False)
 model1.cuda()
 model1.eval()
 
