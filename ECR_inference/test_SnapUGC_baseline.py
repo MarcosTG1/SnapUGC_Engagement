@@ -1,5 +1,6 @@
 import os
 import torch
+torch.set_grad_enabled(False)
 import torchvision
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -224,7 +225,7 @@ def captioning(path):
             # print(videos.shape)
             # exit(0)
             image_embeds_list = []
-            bs = 4
+            bs = 1
             for kkk in range(video_new_len // n_seq // bs):
                 video = videos[kkk*bs:(kkk+1)*bs,:].permute(0,2,1,3,4)
                 # video = video.to(device,non_blocking=True)
