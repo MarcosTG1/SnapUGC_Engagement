@@ -233,20 +233,22 @@ def captioning(path):
             # exit(0)
             image_embeds_list = []
             bs = 1
-            for kkk in range(video_new_len // n_seq // bs):
-                video = videos[kkk*bs:(kkk+1)*bs,:].permute(0,2,1,3,4)
-                # video = video.to(device,non_blocking=True)
-                # topk_ids, topk_probs, image_embeds = model(video, train=False)
-                image_embeds = captioning_model.forward_feature(video, train=False)
-                image_embeds_list.append(image_embeds)
-            if (kkk+1)* bs < video_new_len // n_seq:
-                video = videos[(kkk+1)*bs:,:].permute(0,2,1,3,4)
-                image_embeds = captioning_model.forward_feature(video, train=False)
-                image_embeds_list.append(image_embeds)
+            with torch.cuda.amp.autocast():
+                for kkk in range(video_new_len // n_seq // bs):
+                    video = videos[kkk*bs:(kkk+1)*bs,:].permute(0,2,1,3,4)
+                    image_embeds = captioning_model.forward_feature(video, train=False)
+                    image_embeds_list.append(image_embeds)
+                    torch.cuda.empty_cache()
+                if (kkk+1)* bs < video_new_len // n_seq:
+                    video = videos[(kkk+1)*bs:,:].permute(0,2,1,3,4)
+                    image_embeds = captioning_model.forward_feature(video, train=False)
+                    image_embeds_list.append(image_embeds)
+                    torch.cuda.empty_cache()
             image_embeds_all = torch.cat(image_embeds_list, dim=0)
             image_embeds_all = torch.mean(image_embeds_all, dim=1)
         array_ = array_.to(device,non_blocking=True).unsqueeze(0)
-        topk_ids, topk_probs = captioning_model(array_, train=False)
+        with torch.cuda.amp.autocast():
+            topk_ids, topk_probs = captioning_model(array_, train=False)
         for topk_id, topk_prob in zip(topk_ids, topk_probs):
             ans = tokenizer.decode(topk_id[0]).replace("[SEP]", "").replace("[CLS]", "").replace("[PAD]", "").strip()
             ans = ans.split(config["prompt"])[-1].strip()
@@ -315,11 +317,12 @@ def calculate(videos_dir, videos_files):
         elif n_seq_residual != 0:
             tensors = tensors[0:n_seq_multiple*n_seq]
         tosave_name = video_name.split("/")[-1][0:-4] 
-        feat2_out = feat2_func(model2, tensors)
-        feat1_out = feat1_func(model1, tensors)
-        feat3_out = feat3_func(model3, tensors)
-        feat_4 = image_embeds_all.unsqueeze(0)
-        out0 = model([music1_text], [text1[0]], [text2[0]], [caption], feat1_out.to(gpu1), feat2_out.to(gpu1), feat3_out.to(gpu1), image_embeds_all.to(gpu1))
+        with torch.cuda.amp.autocast():
+            feat2_out = feat2_func(model2, tensors)
+            feat1_out = feat1_func(model1, tensors)
+            feat3_out = feat3_func(model3, tensors)
+            feat_4 = image_embeds_all.unsqueeze(0)
+            out0 = model([music1_text], [text1[0]], [text2[0]], [caption], feat1_out.to(gpu1), feat2_out.to(gpu1), feat3_out.to(gpu1), image_embeds_all.to(gpu1))
         
         out0_mean = torch.mean(out0)
         out0_val = out0_mean.clamp(0.0, 1.0).item()
