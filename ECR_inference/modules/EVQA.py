@@ -347,7 +347,7 @@ class EVQA(nn.Module):
                 truncation=True,
                 return_tensors="pt",
             )
-            text_embedding1 = self.text_encoder(text_input1.input_ids.cuda())[0]
+            text_embedding1 = self.text_encoder(text_input1.input_ids.to(feat3.device))[0]
             text_embedding1 = text_embedding1.repeat(feat3.shape[0],1,1)
             
             text_input2 = self.tokenizer(
@@ -357,7 +357,7 @@ class EVQA(nn.Module):
                 truncation=True,
                 return_tensors="pt",
             )
-            text_embedding2 = self.text_encoder(text_input2.input_ids.cuda())[0]
+            text_embedding2 = self.text_encoder(text_input2.input_ids.to(feat3.device))[0]
             text_embedding2 = text_embedding2.repeat(feat3.shape[0],1,1)
             
             text_input3 = self.tokenizer(
@@ -367,7 +367,7 @@ class EVQA(nn.Module):
                 truncation=True,
                 return_tensors="pt",
             )
-            text_embedding3 = self.text_encoder(text_input3.input_ids.cuda())[0]
+            text_embedding3 = self.text_encoder(text_input3.input_ids.to(feat3.device))[0]
             text_embedding3 = text_embedding3.repeat(feat3.shape[0],1,1)
             
             text_input4 = self.tokenizer(
@@ -377,7 +377,7 @@ class EVQA(nn.Module):
                 truncation=True,
                 return_tensors="pt",
             )
-            text_embedding4 = self.text_encoder(text_input4.input_ids.cuda())[0]
+            text_embedding4 = self.text_encoder(text_input4.input_ids.to(feat3.device))[0]
             text_embedding4 = text_embedding4.repeat(feat3.shape[0],1,1)
             
         feat_1 = feat1.squeeze(3).squeeze(2)
