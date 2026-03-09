@@ -38,10 +38,14 @@ pipe = StableDiffusionPipeline.from_pretrained(
     )
 model = EVQA(3, 16, pipe.tokenizer, pipe.text_encoder)
 
+gpu0 = torch.device('cuda:0')
+gpu1 = torch.device('cuda:1')
+gpu2 = torch.device('cuda:2')
+
 model.load_state_dict(torch.load("checkpoints/EVQA.pth")['params'])
 print("loading successful")
 model.eval()
-model.cuda()
+model = model.to(gpu1)
 
 config = "mPLUG_2/configs_video/VideoCaption_msrvtt_large2.yaml"
 path = Path(config)
@@ -63,7 +67,7 @@ tokenizer = BertTokenizer.from_pretrained("bert-large-uncased")
     #### Model ####
 print("Creating model")
 captioning_model = MPLUG2(config=config, tokenizer=tokenizer)
-device = torch.device("cuda")
+device = gpu2
 captioning_model = captioning_model.to(device)
 checkpoint = torch.load("checkpoints/mPLUG2_MSRVTT_Caption.pth", map_location='cpu')
 try:
@@ -102,18 +106,18 @@ def ensure_sample_rate(original_sample_rate, waveform,
 
 model2 = Distortion()
 model2.load_state_dict(torch.load("checkpoints/net_distort6_g_latest.pth")['params'])
-model2.cuda()
+model2 = model2.to(gpu0)
 model2.eval()
 
 model1 = EfficientNetV2('s',
                         in_channels=3,
                         n_classes=50,
                         pretrained=False)
-model1.cuda()
+model1 = model1.to(gpu0)
 model1.eval()
 
 model3 = generate_model(18)
-model3 = model3.cuda()
+model3 = model3.to(gpu1)
 model3.load_state_dict(torch.load("checkpoints/r3d18_K_200ep.pth")['state_dict'])
 model3.eval()
 
@@ -126,6 +130,7 @@ num_one_running = 48
 mos_label_list = []
 dmos_out_list = []
 def feat2_func(model, tensors):
+    tensors = tensors.to(gpu0)
     feat_1_out = []
     feat_x_out = []
     video_new_len = tensors.shape[0]
@@ -143,6 +148,7 @@ def feat2_func(model, tensors):
     feat_x_out = torch.cat(feat_x_out, dim=0)
     return feat_x_out
 def feat1_func(model, tensors):
+    tensors = tensors.to(gpu0)
     # tensors = normalize(tensors)
     feat_1_out = []
     # continue
@@ -169,6 +175,7 @@ def feat1_func(model, tensors):
     feat_1_out = torch.cat(feat_1_out, dim=0)
     return feat_1_out
 def feat3_func(model, tensors):
+    tensors = tensors.to(gpu1)
     feat_out = []
     video_new_len = tensors.shape[0]
     for kkk in range(video_new_len // n_seq):
@@ -212,7 +219,7 @@ def captioning(path):
             n_seq = 16
             n_seq_multiple = n // n_seq
             n_seq_residual = n % n_seq
-            videos = videos.cuda()
+            videos = videos.to(device)
 
             if n_seq_residual > 3:
                 videos = torch.cat((videos[:,:,0:n_seq_multiple*n_seq], videos[:,:,-n_seq:]), dim=2)
@@ -295,7 +302,7 @@ def calculate(videos_dir, videos_files):
         if H < W:
             tensors = tensors.permute(0,1,3,2)
         tensors = F.interpolate(tensors, (452, 256), mode="bicubic")
-        tensors = tensors.cuda()
+        # tensors = tensors.cuda() # Deferred to functions
         tensors = torch.flip(tensors, (1,))
         tosave_img = tensors[0].permute(1,2,0).cpu().data.numpy()
         video_len, c, h, w = tensors.shape
@@ -312,7 +319,7 @@ def calculate(videos_dir, videos_files):
         feat1_out = feat1_func(model1, tensors)
         feat3_out = feat3_func(model3, tensors)
         feat_4 = image_embeds_all.unsqueeze(0)
-        out0 = model([music1_text], [text1[0]], [text2[0]], [caption], feat1_out, feat2_out, feat3_out, image_embeds_all)
+        out0 = model([music1_text], [text1[0]], [text2[0]], [caption], feat1_out.to(gpu1), feat2_out.to(gpu1), feat3_out.to(gpu1), image_embeds_all.to(gpu1))
         
         out0_mean = torch.mean(out0)
         out0_val = out0_mean.clamp(0.0, 1.0).item()
